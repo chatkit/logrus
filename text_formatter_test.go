@@ -83,5 +83,16 @@ func TestDisableTimestampWithColoredOutput(t *testing.T) {
 	}
 }
 
+func TestDisbleLoggingLevelWithColoredOutput(t *testing.T) {
+	tf := &TextFormatter{DisableLoggingLevel: true, ForceColors: true}
+
+	entry := WithField("test", "test")
+	entry.Level = DebugLevel
+	b, _ := tf.Format(entry)
+	if strings.Contains(string(b), entry.Level.String()) {
+		t.Error("level not expected when DisableLoggingLevel is true")
+	}
+}
+
 // TODO add tests for sorting etc., this requires a parser for the text
 // formatter output.
