@@ -33,6 +33,9 @@ type TextFormatter struct {
 	// Force disabling colors.
 	DisableColors bool
 
+	// Disable showing logging level
+	DisableLevel bool
+
 	// Disable timestamp logging. useful when output is redirected to logging
 	// system that already adds timestamps.
 	DisableTimestamp bool
@@ -103,7 +106,9 @@ func (f *TextFormatter) Format(entry *Entry) ([]byte, error) {
 		if !f.DisableTimestamp {
 			f.appendKeyValue(b, "time", entry.Time.Format(timestampFormat))
 		}
-		f.appendKeyValue(b, "level", entry.Level.String())
+		if !f.DisableLevel {
+			f.appendKeyValue(b, "level", entry.Level.String())
+		}
 		if entry.Message != "" {
 			f.appendKeyValue(b, "msg", entry.Message)
 		}
@@ -129,15 +134,22 @@ func (f *TextFormatter) printColored(b *bytes.Buffer, entry *Entry, keys []strin
 		levelColor = blue
 	}
 
-	levelText := strings.ToUpper(entry.Level.String())[0:4]
+	var levelText string
 
-	if f.DisableTimestamp {
-		fmt.Fprintf(b, "\x1b[%dm%s\x1b[0m %-44s ", levelColor, levelText, entry.Message)
-	} else if !f.FullTimestamp {
-		fmt.Fprintf(b, "\x1b[%dm%s\x1b[0m[%04d] %-44s ", levelColor, levelText, int(entry.Time.Sub(baseTimestamp)/time.Second), entry.Message)
-	} else {
-		fmt.Fprintf(b, "\x1b[%dm%s\x1b[0m[%s] %-44s ", levelColor, levelText, entry.Time.Format(timestampFormat), entry.Message)
+	if !f.DisableLevel {
+		levelText = fmt.Sprintf("\x1b[%dm%s\x1b[0m", levelColor, strings.ToUpper(entry.Level.String())[0:4])
 	}
+
+	var timestampText string
+	if !f.DisableTimestamp {
+		if !f.FullTimestamp {
+			timestampText = fmt.Sprintf("[%04d] ", int(entry.Time.Sub(baseTimestamp)/time.Second))
+		} else {
+			timestampText = fmt.Sprintf("[%s] ", entry.Time.Format(timestampFormat))
+		}
+	}
+
+	fmt.Fprintf(b, "%s%s%-44s ", levelText, timestampText, entry.Message)
 	for _, k := range keys {
 		v := entry.Data[k]
 		fmt.Fprintf(b, " \x1b[%dm%s\x1b[0m=", levelColor, k)
